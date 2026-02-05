@@ -1,4 +1,4 @@
-# 💰 Personal Budget Planner V5
+# 💰 Personal Budget Planner
 
 A clean, modern, and fully featured budget tracking application, built with vanilla JavaScript and local storage. No server required, all your data stays on your device!
 

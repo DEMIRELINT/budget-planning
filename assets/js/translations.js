@@ -3,7 +3,7 @@
 const TRANSLATIONS = {
     en: {
         header: {
-            title: "Budget V5",
+            title: "Budget Planning",
             darkMode: "Toggle Dark Mode",
             colors: "Colors",
             setTarget: "Set Target",
@@ -126,7 +126,7 @@ const TRANSLATIONS = {
     },
     tr: {
         header: {
-            title: "Bütçe V5",
+            title: "Budget Planning",
             darkMode: "Tema Değiştir",
             colors: "Renkler",
             setTarget: "Hedef Belirle",
