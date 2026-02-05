@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="tr" class="light">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bütçe Planlayıcı V5 (Dark Mode + Hedefler)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: { extend: { colors: { darkbg: '#1a1b26', darkcard: '#24283b', darkinput: '#414868' } } }
+        }
+    </script>
+    <link rel="stylesheet" href="assets/css/style.css">
+</head>
+
+<body
+    class="bg-gray-100 text-gray-800 dark:bg-darkbg dark:text-gray-100 min-h-screen font-sans pb-10 transition-colors duration-300">
+
+    <header
+        class="bg-white dark:bg-darkcard border-b dark:border-gray-700 px-4 md:px-8 py-4 flex flex-wrap gap-4 justify-between items-center shadow-sm sticky top-0 z-20 transition-colors duration-300">
+        <div class="flex items-center gap-3">
+            <div class="bg-gradient-to-r from-emerald-500 to-teal-600 text-white p-2 rounded-lg shadow-sm">
+                <i class="fas fa-wallet"></i>
+            </div>
+            <h1 class="text-xl font-bold text-gray-700 dark:text-gray-100 tracking-tight hidden md:block">Bütçe V5</h1>
+
+            <div
+                class="ml-4 flex items-center bg-gray-100 dark:bg-darkinput rounded-lg px-3 py-1 border dark:border-gray-600">
+                <i class="fas fa-calendar-alt text-gray-500 dark:text-gray-300 mr-2"></i>
+                <input type="month" id="monthFilter"
+                    class="bg-transparent border-none outline-none text-sm font-semibold text-gray-700 dark:text-white"
+                    onchange="handleDateChange()">
+            </div>
+        </div>
+
+        <div class="flex items-center gap-2">
+            <button onclick="toggleDarkMode()"
+                class="p-2 rounded-full bg-gray-200 dark:bg-gray-600 text-gray-600 dark:text-yellow-300 transition hover:scale-110"
+                title="Toggle Dark Mode">
+                <i class="fas fa-moon dark:hidden"></i>
+                <i class="fas fa-sun hidden dark:inline"></i>
+            </button>
+
+            <button onclick="toggleLanguage()"
+                class="px-3 py-2 rounded bg-gray-200 dark:bg-gray-600 text-sm font-medium transition hover:scale-105"
+                title="Change Language" id="langButton">
+                🇬🇧 EN
+            </button>
+
+            <button onclick="openColorModal()"
+                class="text-xs bg-purple-50 dark:bg-purple-900/30 hover:bg-purple-100 dark:hover:bg-purple-900/50 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-700 px-3 py-2 rounded transition flex items-center gap-2 font-medium">
+                <i class="fas fa-palette"></i> <span class="hidden sm:inline" data-i18n="header.colors">Colors</span>
+            </button>
+
+            <button onclick="openTargetModal()"
+                class="text-xs bg-indigo-50 dark:bg-indigo-900/30 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-700 px-3 py-2 rounded transition flex items-center gap-2 font-medium">
+                <i class="fas fa-bullseye"></i> <span class="hidden sm:inline" data-i18n="header.setTarget">Set
+                    Target</span>
+            </button>
+
+            <button onclick="downloadBackup()"
+                class="text-gray-500 dark:text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400 px-2"
+                title="Backup" data-i18n-title="header.download"><i class="fas fa-download"></i></button>
+            <label
+                class="text-gray-500 dark:text-gray-400 hover:text-green-600 dark:hover:text-green-400 px-2 cursor-pointer"
+                title="Restore" data-i18n-title="header.upload">
+                <i class="fas fa-upload"></i><input type="file" class="hidden" onchange="restoreBackup(this)">
+            </label>
+        </div>
+    </header>
+
+    <main class="container mx-auto grid grid-cols-1 gap-6 p-4 md:p-6 mt-2">
+
+        <!-- Özet Kartlar -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div
+                class="bg-white dark:bg-darkcard p-4 rounded-xl shadow-sm border dark:border-gray-700 border-l-4 border-l-emerald-500">
+                <p class="text-xs text-gray-500 dark:text-gray-400 uppercase font-semibold"
+                    data-i18n="cards.totalIncome">Total Income</p>
+                <p class="text-2xl font-bold text-emerald-600 dark:text-emerald-400" id="totalIncomeDisplay">0 ₺</p>
+            </div>
+            <div
+                class="bg-white dark:bg-darkcard p-4 rounded-xl shadow-sm border dark:border-gray-700 border-l-4 border-l-rose-500">
+                <p class="text-xs text-gray-500 dark:text-gray-400 uppercase font-semibold"
+                    data-i18n="cards.totalExpense">Total Expense</p>
+                <p class="text-2xl font-bold text-rose-600 dark:text-rose-400" id="totalExpenseDisplay">0 ₺</p>
+            </div>
+            <div
+                class="bg-white dark:bg-darkcard p-4 rounded-xl shadow-sm border dark:border-gray-700 border-l-4 border-l-indigo-500">
+                <p class="text-xs text-gray-500 dark:text-gray-400 uppercase font-semibold" data-i18n="cards.balance">
+                    Net Balance</p>
+                <p class="text-2xl font-bold text-gray-800 dark:text-white" id="netBalance">0 ₺</p>
+            </div>
+        </div>
+
+        <!-- Gelirler ve Giderler Yan Yana -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <!-- GELİRLER BÖLÜMÜ -->
+            <section class="bg-white dark:bg-darkcard rounded-xl shadow-md border dark:border-gray-700 overflow-hidden">
+                <div
+                    class="p-4 border-b dark:border-gray-700 bg-emerald-50 dark:bg-emerald-900/20 flex justify-between items-center">
+                    <h2 class="font-bold text-gray-700 dark:text-gray-200"><i
+                            class="fas fa-arrow-up mr-2 text-emerald-500"></i> <span
+                            data-i18n="income.title">Income</span></h2>
+                    <div class="text-xs text-gray-400" id="currentMonthLabelIncome">Ocak 2026</div>
+                </div>
+
+                <!-- Kompakt Form - İlk Görünüm -->
+                <div id="incomeFormCompact" class="p-4 bg-emerald-50 dark:bg-emerald-900/20">
+                    <button onclick="expandIncomeForm()"
+                        class="w-full bg-emerald-600 hover:bg-emerald-700 text-white p-3 rounded text-sm font-semibold transition flex items-center justify-center gap-2">
+                        <i class="fas fa-plus"></i>
+                        <span data-i18n="buttons.add">Add</span>
+                    </button>
+                </div>
+
+                <!-- Genişletilmiş Form -->
+                <div id="incomeFormExpanded"
+                    class="p-4 bg-emerald-50 dark:bg-emerald-900/20 grid grid-cols-1 gap-2 hidden">
+                    <input type="text" id="inputNameIncome" data-i18n-placeholder="income.placeholder"
+                        class="w-full p-2 rounded border dark:border-gray-600 bg-white dark:bg-darkinput text-sm dark:text-white focus:outline-none">
+                    <input type="number" id="inputAmountIncome" data-i18n-placeholder="income.amount"
+                        class="w-full p-2 rounded border dark:border-gray-600 bg-white dark:bg-darkinput text-sm dark:text-white focus:outline-none">
+                    <input type="date" id="inputDateIncome"
+                        class="w-full p-2 rounded border dark:border-gray-600 bg-white dark:bg-darkinput text-sm dark:text-white focus:outline-none">
+                    <div class="grid grid-cols-2 gap-2">
+                        <button onclick="collapseIncomeForm()"
+                            class="bg-gray-400 hover:bg-gray-500 text-white p-2 rounded text-sm font-semibold transition">
+                            <i class="fas fa-times"></i>
+                        </button>
+                        <button onclick="addIncome()"
+                            class="bg-emerald-600 hover:bg-emerald-700 text-white p-2 rounded text-sm font-semibold transition"
+                            data-i18n="buttons.addExpanded">Add Entry</button>
+                    </div>
+                </div>
+
+                <div class="max-h-[300px] overflow-y-auto custom-scrollbar p-2">
+                    <ul id="incomeList" class="space-y-2"></ul>
+                    <div id="emptyIncomeList" class="text-center py-10 text-gray-400 dark:text-gray-500 text-sm hidden"
+                        data-i18n="income.empty">
+                        No income found for selected month.
+                    </div>
+                </div>
+            </section>
+
+            <!-- GİDERLER BÖLÜMÜ -->
+            <section class="bg-white dark:bg-darkcard rounded-xl shadow-md border dark:border-gray-700 overflow-hidden">
+                <div
+                    class="p-4 border-b dark:border-gray-700 bg-rose-50 dark:bg-rose-900/20 flex justify-between items-center">
+                    <h2 class="font-bold text-gray-700 dark:text-gray-200"><i
+                            class="fas fa-arrow-down mr-2 text-rose-500"></i> <span
+                            data-i18n="expense.title">Expenses</span></h2>
+                    <div class="flex items-center gap-2">
+                        <button onclick="openCategoryAnalysisModal()"
+                            class="text-xs bg-rose-100 dark:bg-rose-900 hover:bg-rose-200 dark:hover:bg-rose-800 text-rose-700 dark:text-rose-300 px-3 py-1 rounded transition flex items-center gap-1">
+                            <i class="fas fa-chart-pie"></i>
+                            <span data-i18n="buttons.categoryAnalysis">Category Analysis</span>
+                        </button>
+                        <div class="text-xs text-gray-400" id="currentMonthLabelExpense">Ocak 2026</div>
+                    </div>
+                </div>
+
+                <!-- Kompakt Form - İlk Görünüm -->
+                <div id="expenseFormCompact" class="p-4 bg-rose-50 dark:bg-rose-900/20">
+                    <button onclick="expandExpenseForm()"
+                        class="w-full bg-rose-600 hover:bg-rose-700 text-white p-3 rounded text-sm font-semibold transition flex items-center justify-center gap-2">
+                        <i class="fas fa-plus"></i>
+                        <span data-i18n="buttons.add">Add</span>
+                    </button>
+                </div>
+
+                <!-- Genişletilmiş Form -->
+                <div id="expenseFormExpanded" class="p-4 bg-rose-50 dark:bg-rose-900/20 grid grid-cols-1 gap-2 hidden">
+                    <input type="text" id="inputNameExpense" data-i18n-placeholder="expense.placeholder"
+                        class="w-full p-2 rounded border dark:border-gray-600 bg-white dark:bg-darkinput text-sm dark:text-white focus:outline-none">
+                    <select id="inputCategory"
+                        class="w-full p-2 rounded border dark:border-gray-600 bg-white dark:bg-darkinput text-sm dark:text-white focus:outline-none">
+                    </select>
+                    <input type="number" id="inputAmountExpense" data-i18n-placeholder="expense.amount"
+                        class="w-full p-2 rounded border dark:border-gray-600 bg-white dark:bg-darkinput text-sm dark:text-white focus:outline-none">
+                    <input type="date" id="inputDateExpense"
+                        class="w-full p-2 rounded border dark:border-gray-600 bg-white dark:bg-darkinput text-sm dark:text-white focus:outline-none">
+                    
+                    <!-- Tekrarlayan İşlem -->
+                    <div class="flex items-center gap-2 bg-purple-50 dark:bg-purple-900/20 p-2 rounded">
+                        <input type="checkbox" id="inputRecurring" class="w-4 h-4 text-purple-600 rounded">
+                        <label for="inputRecurring" class="text-sm text-gray-700 dark:text-gray-300 cursor-pointer">
+                            🔁 <span data-i18n="buttons.recurring">Tekrarlayan</span>
+                        </label>
+                    </div>
+                    
+                    <!-- Cashback/Puan (Opsiyonel) -->
+                    <details class="text-sm bg-green-50 dark:bg-green-900/20 rounded p-2">
+                        <summary class="cursor-pointer text-gray-700 dark:text-gray-300 font-medium">
+                            💳 <span data-i18n="buttons.cashbackSection">Cashback/Puan (Opsiyonel)</span>
+                        </summary>
+                        <div class="mt-2 space-y-2">
+                            <input type="number" id="inputCashbackPercent" data-i18n-placeholder="cashback.percent" placeholder="Cashback % (örn: 5)" step="0.01" min="0" max="100" class="w-full p-2 rounded border dark:border-gray-600 bg-white dark:bg-darkinput text-xs dark:text-white focus:outline-none">
+                            <input type="number" id="inputPoints" data-i18n-placeholder="cashback.points" placeholder="Kazanılan Puan" step="1" min="0" class="w-full p-2 rounded border dark:border-gray-600 bg-white dark:bg-darkinput text-xs dark:text-white focus:outline-none">
+                        </div>
+                    </details>
+
+                    <div class="grid grid-cols-2 gap-2">
+                        <button onclick="collapseExpenseForm()"
+                            class="bg-gray-400 hover:bg-gray-500 text-white p-2 rounded text-sm font-semibold transition">
+                            <i class="fas fa-times"></i>
+                        </button>
+                        <button onclick="addExpense()"
+                            class="bg-rose-600 hover:bg-rose-700 text-white p-2 rounded text-sm font-semibold transition"
+                            data-i18n="buttons.addExpanded">Add Entry</button>
+                    </div>
+                </div>
+
+                <div class="max-h-[300px] overflow-y-auto custom-scrollbar p-2">
+                    <ul id="expenseList" class="space-y-2"></ul>
+                    <div id="emptyExpenseList" class="text-center py-10 text-gray-400 dark:text-gray-500 text-sm hidden"
+                        data-i18n="expense.empty">
+                        No expenses found for selected month.
+                    </div>
+                </div>
+            </section>
+        </div>
+
+        <!-- Hedef Takibi ve İstatistikler Yan Yana -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <!-- HEDEF TAKİBİ -->
+            <section class="bg-white dark:bg-darkcard rounded-xl shadow-md border dark:border-gray-700 overflow-hidden">
+                <div class="p-4 border-b dark:border-gray-700 flex justify-between items-center">
+                    <h2 class="font-bold text-gray-700 dark:text-gray-200"><i
+                            class="fas fa-bullseye mr-2 text-orange-500"></i> <span data-i18n="budget.title">Budget
+                            Target Tracking</span></h2>
+                    <span
+                        class="text-xs bg-orange-100 dark:bg-orange-900 text-orange-700 dark:text-orange-300 px-2 py-1 rounded"
+                        data-i18n="budget.subtitle">Monthly Analysis</span>
+                </div>
+                <div class="p-4">
+                    <div id="budgetCardsContainer" class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    </div>
+                    <div id="noBudgetInfo" class="text-center py-8 text-gray-400 text-xs hidden"
+                        data-i18n="budget.empty">
+                        No targets set yet. Use "Set Target" button.
+                    </div>
+                </div>
+            </section>
+
+            <!-- İSTATİSTİKLER -->
+            <div class="space-y-6">
+                <div class="bg-white dark:bg-darkcard p-4 rounded-xl shadow-md border dark:border-gray-700">
+                    <h3 class="font-bold text-gray-700 dark:text-gray-200 mb-4 text-sm" data-i18n="charts.distribution">
+                        Expense Distribution</h3>
+                    <div class="relative h-56 w-full flex justify-center">
+                        <canvas id="expenseChart"></canvas>
+                    </div>
+                </div>
+
+                <div class="bg-white dark:bg-darkcard p-4 rounded-xl shadow-md border dark:border-gray-700">
+                    <h3 class="font-bold text-gray-700 dark:text-gray-200 mb-4 text-sm" data-i18n="charts.comparison">
+                        Target vs Actual</h3>
+                    <div class="relative h-64 w-full">
+                        <canvas id="comparisonChart"></canvas>
+                    </div>
+                </div>
+
+                <div
+                    class="bg-indigo-50 dark:bg-indigo-900/20 p-4 rounded-xl border border-indigo-100 dark:border-indigo-800">
+                    <h4 class="font-bold text-indigo-800 dark:text-indigo-300 text-sm mb-2" data-i18n="charts.insights">
+                        Monthly Insights</h4>
+                    <p id="insightText" class="text-xs text-indigo-700 dark:text-indigo-200">Veri analizi bekleniyor...
+                    </p>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <div id="colorModal"
+        class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-center justify-center p-4 backdrop-blur-sm">
+        <div
+            class="bg-white dark:bg-darkcard rounded-xl shadow-2xl w-full max-w-sm overflow-hidden border dark:border-gray-700">
+            <div class="bg-purple-600 p-4 text-white flex justify-between items-center">
+                <h3 class="font-bold" data-i18n="modals.colors.title">Category Colors</h3>
+                <button onclick="closeColorModal()" class="hover:text-gray-300"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="p-4 max-h-[60vh] overflow-y-auto space-y-3" id="colorInputContainer">
+            </div>
+            <div class="p-4 bg-gray-50 dark:bg-darkcard/50 flex justify-between border-t dark:border-gray-700">
+                <button onclick="resetColors()"
+                    class="text-xs text-gray-600 dark:text-gray-400 hover:text-purple-600 dark:hover:text-purple-400">
+                    <i class="fas fa-undo"></i> <span data-i18n="modals.colors.reset">Reset to Default</span>
+                </button>
+                <button onclick="saveColors()"
+                    class="bg-purple-600 text-white px-4 py-2 rounded text-sm font-semibold hover:bg-purple-700"
+                    data-i18n="modals.colors.save">Save</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="targetModal"
+        class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-center justify-center p-4 backdrop-blur-sm">
+        <div
+            class="bg-white dark:bg-darkcard rounded-xl shadow-2xl w-full max-w-sm overflow-hidden border dark:border-gray-700">
+            <div class="bg-gradient-to-r from-emerald-500 to-teal-600 p-4 text-white flex justify-between items-center">
+                <h3 class="font-bold" data-i18n="modals.target.title">Monthly Budget Targets</h3>
+                <p class="text-xs text-emerald-100 mt-1 font-medium">🎯 Create your path to financial freedom!</p>
+
+                <button onclick="closeTargetModal()" class="hover:text-gray-300"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="p-4 max-h-[60vh] overflow-y-auto space-y-3" id="targetInputContainer">
+            </div>
+            <div class="p-4 bg-gray-50 dark:bg-darkcard/50 text-right border-t dark:border-gray-700">
+                <button onclick="saveTargets()"
+                    class="bg-gradient-to-r from-emerald-500 to-teal-600 text-white px-4 py-2 rounded text-sm font-semibold hover:bg-indigo-700"
+                    data-i18n="modals.target.save">Save</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="categoryAnalysisModal"
+        class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-center justify-center p-4 backdrop-blur-sm">
+        <div
+            class="bg-white dark:bg-darkcard rounded-xl shadow-2xl w-full max-w-2xl overflow-hidden border dark:border-gray-700">
+            <div class="bg-gradient-to-r from-rose-600 to-pink-600 p-4 text-white flex justify-between items-center">
+                <h3 class="font-bold flex items-center gap-2">
+                    <i class="fas fa-chart-pie"></i>
+                    <span data-i18n="modals.categoryAnalysis.title">Category Analysis</span>
+                </h3>
+                <button onclick="closeCategoryAnalysisModal()" class="hover:text-gray-300"><i
+                        class="fas fa-times"></i></button>
+            </div>
+            <div
+                class="p-4 bg-gray-50 dark:bg-darkcard/50 border-b dark:border-gray-700 flex justify-between items-center">
+                <div class="flex items-center gap-2">
+                    <span class="text-sm font-medium text-gray-700 dark:text-gray-300"
+                        data-i18n="modals.categoryAnalysis.sortBy">Sort by:</span>
+                    <select id="categoryAnalysisSort" onchange="renderCategoryAnalysis()"
+                        class="text-sm p-1 rounded border dark:border-gray-600 bg-white dark:bg-darkinput dark:text-white">
+                        <option value="highToLow" data-i18n="modals.categoryAnalysis.highToLow">High to Low</option>
+                        <option value="lowToHigh" data-i18n="modals.categoryAnalysis.lowToHigh">Low to High</option>
+                    </select>
+                </div>
+            </div>
+            <div class="p-4 max-h-[60vh] overflow-y-auto" id="categoryAnalysisContainer">
+            </div>
+        </div>
+    </div>
+
+    <div id="editModal"
+        class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-center justify-center p-4 backdrop-blur-sm">
+        <div class="bg-white dark:bg-darkcard rounded-xl w-80 p-5 shadow-2xl dark:border dark:border-gray-700">
+            <h3 class="font-bold mb-4 text-gray-800 dark:text-white">Düzenle</h3>
+            <input type="hidden" id="editId">
+            <input type="text" id="editName"
+                class="w-full p-2 mb-2 border rounded dark:bg-darkinput dark:border-gray-600 dark:text-white">
+            <input type="number" id="editAmount"
+                class="w-full p-2 mb-4 border rounded dark:bg-darkinput dark:border-gray-600 dark:text-white">
+            <div class="flex justify-end gap-2">
+                <button onclick="document.getElementById('editModal').classList.add('hidden')"
+                    class="px-3 py-1 text-gray-500">İptal</button>
+                <button onclick="saveEdit()" class="px-3 py-1 bg-gradient-to-r from-emerald-500 to-teal-600 text-white rounded">Kaydet</button>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- JavaScript Modules -->
+    <script src="assets/js/config.js"></script>
+    <script src="assets/js/translations.js"></script>
+    <script src="assets/js/app.js"></script>
+
+</body>
+
+</html>
